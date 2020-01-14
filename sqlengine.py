@@ -167,6 +167,45 @@ def create_table(tables, columns, star_flag, sum_flag, avg_flag, max_flag, min_f
     final_table['info'] = []
     final_table['table'] = []
 
+    # if len(tables) == 1:
+    #     path = 'files/' + tables[0] + '.csv'
+    #     num_attr = len(metadata[tables[0]])
+    #     for i in range(num_attr):
+    #         final_table['info'].append(
+    #             tables[0] + '.' + metadata[tables[0]][i].upper())
+    #     with open(path, 'r') as f:
+    #         csvreader = csv.reader(f)
+    #         for row in csvreader:
+    #             final_table['table'].append(row)
+
+    #     cols = []
+    #     if star_flag == True:
+    #         for i in range(num_attr):
+    #             cols.append(i)
+    #     else:
+    #         j = 0
+    #         for i in range(num_attr):
+    #             if (tables[0] + '.' + metadata[tables[0]][i].upper()) == columns[j]:
+    #                 cols.append(i)
+    #                 j = j + 1
+    #             if j == len(columns):
+    #                 break
+    #     if sum_flag == False and avg_flag == False and max_flag == False and min_flag == False and distinct_flag == False:
+    #         print_data(final_table, cols)
+    #     elif sum_flag == True:
+    #         print(sum_func(final_table['table'], cols[0]))
+    #     elif avg_flag == True:
+    #         print(avg_func(final_table['table'], cols[0]))
+    #     elif max_flag == True:
+    #         print(max_func(final_table['table'], cols[0]))
+    #     elif min_flag == True:
+    #         print(min_func(final_table['table'], cols[0]))
+    #     elif distinct_flag == True:
+    #         distict_func(final_table, cols)
+    #     elif where_flag == True:
+    #         return final_table
+
+    # else:
     for t in tables:
         for c in metadata[t]:
             final_table['info'].append(t + "." + c.upper())
@@ -207,7 +246,8 @@ def create_table(tables, columns, star_flag, sum_flag, avg_flag, max_flag, min_f
     return final_table, cols
 
 
-def process_condition(condition, final_table, cols_print):
+def process_condition(condition, final_table, cols_print, tables):
+    # print(condition)
     ans = []
     if '!=' in condition:
         val = int(condition.split('!=')[1])
@@ -217,10 +257,12 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
-        print(var, val)
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
@@ -242,9 +284,12 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
@@ -266,9 +311,12 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
@@ -290,9 +338,12 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
@@ -314,9 +365,12 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
@@ -338,20 +392,26 @@ def process_condition(condition, final_table, cols_print):
             c = var.split('.')[1]
             var = t + '.' + c.upper()
         else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+            if len(tables) == 1:
+                var = tables[0] + '.' + var.upper()
+            else:
+                for t in metadata:
+                    if var in metadata[t]:
+                        var = t + '.' + var.upper()
+        # print(var, val)
         col = -1
         for h in range(len(final_table['info'])):
             if var == final_table['info'][h]:
                 col = h
                 break
+        # print(col)
         for i in range(len(final_table['table'])):
             temp = []
             if int(final_table['table'][i][col]) == val:
                 for c in cols_print:
                     temp.append(final_table['table'][i][c])
                 ans.append(temp)
+        return ans
 
     return ans
 
@@ -441,48 +501,55 @@ def process_query(query):
         condition = new_query.split("where")[1].strip()
         if 'and' in condition:
             res1 = process_condition(condition.split('and')[
-                                     0].strip(), final_table, cols_print)
+                                     0].strip(), final_table, cols_print, tables)
             res2 = process_condition(condition.split('and')[
-                                     1].strip(), final_table, cols_print)
+                                     1].strip(), final_table, cols_print, tables)
+            # print(res1)
+            # print(res2)
             for row in res1:
                 if row in res2:
                     final_ans.append(row)
         elif 'or' in condition:
-            res1 = process_condition(condition.split('and')[
-                                     0].strip(), final_table, cols_print)
-            res2 = process_condition(condition.split('and')[
-                                     1].strip(), final_table, cols_print)
-            final_ans = res1 + res2
+            res1 = process_condition(condition.split('or')[
+                                     0].strip(), final_table, cols_print, tables)
+            res2 = process_condition(condition.split('or')[
+                                     1].strip(), final_table, cols_print, tables)
+            for row in res1:
+                final_ans.append(row)
+            for row in res2:
+                if row not in final_ans:
+                    final_ans.append(row)
         else:
-            final_ans = process_condition(condition, final_table, cols_print)
+            final_ans = process_condition(condition, final_table, cols_print, tables)
 
-        num_print = len(cols_print)
-        x = len(final_table['info'])
-        j = 0
-        ap = 0
-        for i in range(x):
-            if i == cols_print[j]:
-                if ap != num_print - 1:
-                    print(final_table['info'][i] + ',', end=' ')
-                else:
-                    print(final_table['info'][i], end=' ')
-                j = j + 1
-                ap = ap + 1
-            if j == len(cols_print):
-                break
-        print()
-        n = len(final_ans)
-        ap = 0
-        for i in range(n):
-            num_attr = len(final_ans[i])
+        if len(final_ans) > 0:
+            num_print = len(cols_print)
+            x = len(final_table['info'])
+            j = 0
             ap = 0
-            for j in range(num_attr):
-                if ap != num_print - 1:
-                    print(final_ans[i][j] + ',', end=' ')
-                else:
-                    print(final_ans[i][j], end=' ')
-                ap = ap + 1
+            for i in range(x):
+                if i == cols_print[j]:
+                    if ap != num_print - 1:
+                        print(final_table['info'][i] + ',', end=' ')
+                    else:
+                        print(final_table['info'][i], end=' ')
+                    j = j + 1
+                    ap = ap + 1
+                if j == len(cols_print):
+                    break
             print()
+            n = len(final_ans)
+            ap = 0
+            for i in range(n):
+                num_attr = len(final_ans[i])
+                ap = 0
+                for j in range(num_attr):
+                    if ap != num_print - 1:
+                        print(final_ans[i][j] + ',', end=' ')
+                    else:
+                        print(final_ans[i][j], end=' ')
+                    ap = ap + 1
+                print()
 
     else:
         create_table(tables, columns, star_flag, sum_flag,
