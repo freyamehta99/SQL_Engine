@@ -566,7 +566,7 @@ def main():
         query = query[:-1].strip()
         process_query(query.lower())
     else:
-        print("Usage: python3 20171104.py 'query'")
+        print("Usage: python3 sqlengine.py 'query'")
         print("Bye")
         sys.exit()
 
