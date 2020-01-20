@@ -2,7 +2,7 @@ import sys
 import os
 import csv
 import re
-import sqlparse
+import operator
 
 metadata = {}
 
@@ -32,10 +32,7 @@ def get_tables(filename):
 
 
 def validate_query(query):
-    if bool(re.match('^select.*from.*', query)) == False:
-        return False
-    else:
-        return True
+    return bool(re.match('^select.*from.*', query))
 
 
 def print_data(final_table_info, final_table_data, cols, all):
@@ -144,7 +141,7 @@ def join(table, tname):
     return final_table
 
 
-def create_table(tables, columns, star_flag, sum_flag, avg_flag, max_flag, min_flag, distinct_flag, where_flag):
+def create_table(tables, columns, star_flag, sum_flag, avg_flag, max_flag, min_flag, distinct_flag):
     final_table = {}
     final_table['info'] = []
     final_table['table'] = []
@@ -170,116 +167,108 @@ def create_table(tables, columns, star_flag, sum_flag, avg_flag, max_flag, min_f
                 if final_table['info'][i] == columns[j]:
                     cols.append(i)
 
-    if where_flag == False:
-        if sum_flag == False and avg_flag == False and max_flag == False and min_flag == False and distinct_flag == False:
-            print_data(final_table['info'], final_table['table'], cols, False)
-        elif sum_flag == True:
-            print(sum_func(final_table['table'], cols[0]))
-        elif avg_flag == True:
-            print(avg_func(final_table['table'], cols[0]))
-        elif max_flag == True:
-            print(max_func(final_table['table'], cols[0]))
-        elif min_flag == True:
-            print(min_func(final_table['table'], cols[0]))
-        elif distinct_flag == True:
-            distinct_func(final_table['info'], final_table['table'], cols)
-    else:
-        return final_table, cols
-
     return final_table, cols
+
+
+def parse_var(var, tables_list):
+    if '.' in var:
+        t = var.split('.')[0]
+        f = var.split('.')[1]
+        if t not in metadata:
+            print("Table does not exist")
+            sys.exit()
+        if t not in tables_list:
+            print("Table not present in Query")
+            sys.exit()
+        if f not in metadata[t]:
+            print("Invalid Attribute")
+            sys.exit()
+        var = t + '.' + f.upper()
+    else:
+        flag = 1
+        for t in metadata:
+            if var in metadata[t]:
+                if t in tables_list:
+                    var = t + '.' + var.upper()
+                    flag = 1
+                    break
+            else:
+                flag = 0
+        if flag == 0:
+            print("Invalid Attribute")
+            sys.exit()
+    return var
 
 
 def compute_condition(query, operator, final_table, tables):
     var = query.split(operator)[0].strip()
-    val = int(query.split(operator)[1])
-    if '.' in var:
-        t = var.split('.')[0]
-        c = var.split('.')[1]
-        var = t + '.' + c.upper()
-    else:
-        if len(tables) == 1:
-            var = tables[0] + '.' + var.upper()
-        else:
-            for t in metadata:
-                if var in metadata[t]:
-                    var = t + '.' + var.upper()
+    try:
+        val = int(query.split(operator)[1])
+    except:
+        var1 = var
+        var2 = (query.split(operator))[1]
+        var1 = parse_var(var1, tables)
+        var2 = parse_var(var2, tables)
+        col1 = -1
+        for h in range(len(final_table['info'])):
+            if var1 == final_table['info'][h]:
+                col1 = h
+                break
+        col2 = -1
+        for h in range(len(final_table['info'])):
+            if var2 == final_table['info'][h]:
+                col2 = h
+                break
+        return col1, var1, col2, var2
+    var = parse_var(var, tables)
     col = -1
     for h in range(len(final_table['info'])):
         if var == final_table['info'][h]:
             col = h
             break
-    return col, val
+    return col, val, None, None
 
 
 def process_condition(condition, final_table, cols_print, tables):
     ans = []
+    ops = {"!=": operator.ne, "=": operator.eq, ">=": operator.ge,
+           ">": operator.gt, "<": operator.lt, "<=": operator.le}
+
     if '!=' in condition:
-        col, val = compute_condition(condition, '!=', final_table, tables)
-        for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) != val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
+        oper = '!='
+    elif '>=' in condition:
+        oper = '>='
+    elif '>' in condition:
+        oper = '>'
+    elif '<=' in condition:
+        oper = '<='
+    elif '<' in condition:
+        oper = '<'
+    elif '=' in condition:
+        oper = '='
+    else:
+        print("Invalid Operator")
+        sys.exit()
 
-    if '>=' in condition:
-        col, val = compute_condition(condition, '>=', final_table, tables)
+    col1, var1, col2, var2 = compute_condition(
+        condition, oper, final_table, tables)
+    if col2 == None:
         for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) >= val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
-
-    if '>' in condition:
-        col, val = compute_condition(condition, '>', final_table, tables)
+            if ops[oper](int(final_table['table'][i][col1]), var1):
+                ans.append(final_table['table'][i])
+    else:
         for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) > val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
-
-    if '<=' in condition:
-        col, val = compute_condition(condition, '<=', final_table, tables)
-        for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) <= val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
-
-    if '<' in condition:
-        col, val = compute_condition(condition, '<', final_table, tables)
-        for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) < val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
-
-    if '=' in condition:
-        col, val = compute_condition(condition, '=', final_table, tables)
-        for i in range(len(final_table['table'])):
-            temp = []
-            if int(final_table['table'][i][col]) == val:
-                for c in cols_print:
-                    temp.append(final_table['table'][i][c])
-                ans.append(temp)
-        return ans
-
-    return ans
+            if ops[oper](int(final_table['table'][i][col1]), int(final_table['table'][i][col2])):
+                ans.append(final_table['table'][i])
+        if col1 in cols_print and col2 in cols_print:
+            cols_print.remove(col2)
+    return ans, cols_print
 
 
 def process_query(query):
     if validate_query(query) == False:
         print("Invalid Query")
-        print("Format: Select * from table_name")
+        print("Format: Select <columns> from <tables> where <condition>")
         sys.exit()
 
     sum_flag = avg_flag = max_flag = min_flag = False
@@ -289,16 +278,32 @@ def process_query(query):
     if bool(re.match('^(sum)\(.*\)', columns)):
         sum_flag = True
         columns = columns.replace('sum', '').strip().strip('()')
-    if bool(re.match('^(avg)\(.*\)', columns)):
+        col2 = columns.split(',')
+        if len(col2) > 1:
+            print("Only one column allowed with aggregate functions")
+            sys.exit()
+    elif bool(re.match('^(avg)\(.*\)', columns)):
         avg_flag = True
         columns = columns.replace('avg', '').strip().strip('()')
-    if bool(re.match('^(max)\(.*\)', columns)):
+        col2 = columns.split(',')
+        if len(columns) > 1:
+            print("Only one column allowed with aggregate functions")
+            sys.exit()
+    elif bool(re.match('^(max)\(.*\)', columns)):
         max_flag = True
         columns = columns.replace('max', '').strip().strip('()')
-    if bool(re.match('^(min)\(.*\)', columns)):
+        col2 = columns.split(',')
+        if len(columns) > 1:
+            print("Only one column allowed with aggregate functions")
+            sys.exit()
+    elif bool(re.match('^(min)\(.*\)', columns)):
         min_flag = True
         columns = columns.replace('min', '').strip().strip('()')
-    if bool(re.match('^distinct.*', columns)):
+        col2 = columns.split(',')
+        if len(columns) > 1:
+            print("Only one column allowed with aggregate functions")
+            sys.exit()
+    elif bool(re.match('^distinct.*', columns)):
         distinct_flag = True
         columns = columns.replace('distinct', '').strip()
     columns = columns.split(',')
@@ -319,100 +324,66 @@ def process_query(query):
         star_flag = True
 
     if star_flag == False:
-        if len(tables) == 1:
-            for i in range(len(columns)):
-                if '.' in columns[i]:
-                    f = columns[i].split('.')[1]
-                    if tables[0] not in metadata:
-                        print("Table does not exist")
-                        sys.exit()
-                    if f not in metadata[tables[0]]:
-                        print("Invalid Attribute")
-                        sys.exit()
-                    columns[i] = tables[0] + '.' + f.upper()
-                else:
-                    if columns[i] not in metadata[tables[0]]:
-                        print("Invalid Attribute")
-                        sys.exit()
-                    columns[i] = tables[0] + '.' + columns[i].upper()
-        else:
-            for i in range(len(columns)):
-                if '.' in columns[i]:
-                    t = columns[i].split('.')[0]
-                    f = columns[i].split('.')[1]
-                    if t not in metadata:
-                        print("Table does not exist")
-                        sys.exit()
-                    if f not in metadata[t]:
-                        print("Invalid Attribute")
-                        sys.exit()
-                    columns[i] = t + '.' + f.upper()
-                else:
-                    flag = 1
-                    for t in metadata:
-                        if columns[i] in metadata[t]:
-                            columns[i] = t + '.' + columns[i].upper()
-                            flag = 1
-                            break
-                        else:
-                            flag = 0
-                    if flag == 0:
-                        print("Invalid Attribute")
-                        sys.exit()
+        # print("columns: ",len(columns))
+        for i in range(len(columns)):
+            columns[i] = parse_var(columns[i], tables)
+            # print(columns[i],"  , ")
 
-    where_flag = False
     if bool(re.match('^select.*from.*where.*', query)):
-        where_flag = True
         final_table = {}
         final_ans = []
         final_table, cols_print = create_table(tables, columns, star_flag, sum_flag,
-                                               avg_flag, max_flag, min_flag, distinct_flag, where_flag)
+                                               avg_flag, max_flag, min_flag, distinct_flag)
         condition = new_query.split("where")[1].strip()
         if 'and' in condition:
-            res1 = process_condition(condition.split('and')[
-                                     0].strip(), final_table, cols_print, tables)
-            res2 = process_condition(condition.split('and')[
-                                     1].strip(), final_table, cols_print, tables)
+            res1, cols_print = process_condition(condition.split('and')[0].strip(), final_table, cols_print, tables)
+            res2, cols_print = process_condition(condition.split('and')[1].strip(), final_table, cols_print, tables)
             for row in res1:
                 if row in res2:
                     final_ans.append(row)
         elif 'or' in condition:
-            res1 = process_condition(condition.split('or')[
-                                     0].strip(), final_table, cols_print, tables)
-            res2 = process_condition(condition.split('or')[
-                                     1].strip(), final_table, cols_print, tables)
+            res1, cols_print = process_condition(condition.split('or')[0].strip(), final_table, cols_print, tables)
+            res2, cols_print = process_condition(condition.split('or')[1].strip(), final_table, cols_print, tables)
             for row in res1:
                 final_ans.append(row)
             for row in res2:
                 if row not in final_ans:
                     final_ans.append(row)
         else:
-            final_ans = process_condition(
+            final_ans, cols_print = process_condition(
                 condition, final_table, cols_print, tables)
 
         if len(final_ans) > 0:
             if sum_flag == True:
-                sum = sum_func(final_ans, 0)
-                print(sum)
+                print(sum_func(final_ans, cols_print[0]))
             elif avg_flag == True:
-                avg = avg_func(final_ans, 0)
-                print(avg)
+                print(avg_func(final_ans, cols_print[0]))
             elif max_flag == True:
-                max = max_func(final_ans, 0)
-                print(max)
+                print(max_func(final_ans, cols_print[0]))
             elif min_flag == True:
-                min = min_func(final_ans, 0)
-                print(min)
+                print(min_func(final_ans, cols_print[0]))
             elif distinct_flag == True:
                 distinct_func(final_table['info'], final_ans, cols_print)
             else:
-                print_data(final_table['info'], final_ans, cols_print, True)
+                print_data(final_table['info'], final_ans, cols_print, False)
         else:
             print("No row matches the given condition")
 
     else:
-        create_table(tables, columns, star_flag, sum_flag,
-                     avg_flag, max_flag, min_flag, distinct_flag, where_flag)
+        final_table, cols = create_table(tables, columns, star_flag, sum_flag,
+                                         avg_flag, max_flag, min_flag, distinct_flag)
+        if sum_flag == True:
+            print(sum_func(final_table['table'], cols[0]))
+        elif avg_flag == True:
+            print(avg_func(final_table['table'], cols[0]))
+        elif max_flag == True:
+            print(max_func(final_table['table'], cols[0]))
+        elif min_flag == True:
+            print(min_func(final_table['table'], cols[0]))
+        elif distinct_flag == True:
+            distinct_func(final_table['info'], final_table['table'], cols)
+        else:
+            print_data(final_table['info'], final_table['table'], cols, False)
 
 
 def main():
